@@ -54,9 +54,9 @@ data_source = st.sidebar.radio(
 uploaded_file = None
 df = None
 
-DEFAULT_VERACRYPT_DIR = r"C:\\Users\\Arjun Gupta\\Desktop\\VeraCrypt"
+DEFAULT_VERACRYPT_DIR = os.getenv("VERACRYPT_DIR", r"C:\Program Files\VeraCrypt")
 DEFAULT_VERACRYPT_EXE = os.path.join(DEFAULT_VERACRYPT_DIR, "VeraCrypt.exe")
-VERACRYPT_CLI = shutil.which("veracrypt") or shutil.which("veracrypt.exe") or (DEFAULT_VERACRYPT_EXE if os.path.exists(DEFAULT_VERACRYPT_EXE) else None)
+VERACRYPT_CLI = os.getenv("VERACRYPT_BIN") or shutil.which("veracrypt") or shutil.which("veracrypt.exe") or (DEFAULT_VERACRYPT_EXE if os.path.exists(DEFAULT_VERACRYPT_EXE) else None)
 
 def is_veracrypt_available():
     return VERACRYPT_CLI is not None
@@ -121,7 +121,12 @@ elif data_source == "PostgreSQL Database":
                 user=db_user,
                 password=db_password,
             )
-            raw_df = pd.read_sql(f"SELECT * FROM {table_name}", conn)
+            from psycopg2 import sql
+            if not table_name.isidentifier():
+                st.error("Invalid table name specified")
+                st.stop()
+            query = sql.SQL("SELECT * FROM {}").format(sql.Identifier(table_name))
+            raw_df = pd.read_sql(query.as_string(conn), conn)
             conn.close()
             df = clean_travel_data(raw_df)
             st.success("Connected to PostgreSQL successfully")
